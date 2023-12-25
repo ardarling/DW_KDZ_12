@@ -40,3 +40,106 @@ CREATE TABLE kdz_12_dds.flights (
 	loaded_ts timestamp NULL DEFAULT now(),
 	CONSTRAINT lights_pk PRIMARY KEY (flight_dep_scheduled_ts, flight_number_reporting_airline, origin_code, dest_code)
 );
+
+INSERT INTO kdz_12_dds.flights
+(
+  year,
+  quarter,
+  month,
+  flight_scheduled_date,
+  flight_actual_date,
+  flight_dep_scheduled_ts,
+  flight_dep_actual_ts,
+  report_airline,
+  tail_number,
+  flight_number_reporting_airline,
+  airport_origin_dk,
+  origin_code,
+  airport_dest_dk,
+  dest_code,
+  dep_delay_minutes,
+  cancelled,
+  cancellation_code,
+  weather_delay,
+  air_time,
+  distance,
+  loaded_ts
+)
+SELECT
+  s.year_flights,
+  s.quarter_flights,
+  s.month_flights,
+  s.flight_date,
+  CASE WHEN s.cancelled = 0 THEN (s.flight_date + s.dep_delay_minutes * INTERVAL '1 minute')::date END AS flight_actual_date,
+  (s.flight_date + s.crs_dep_time)::timestamp AS flight_dep_scheduled_ts,
+  CASE WHEN s.cancelled = 0 THEN (s.flight_date + s.crs_dep_time + s.dep_delay_minutes * INTERVAL '1 minute')::timestamp END AS flight_dep_actual_ts,
+  s.reporting_airline,
+  s.tail_number,
+  s.flight_number,
+  ao.airport_dk AS airport_origin_dk,
+  s.origin,
+  ad.airport_dk AS airport_dest_dk,
+  s.dest,
+  s.dep_delay_minutes,
+  s.cancelled::int,
+  s.cancellation_code,
+  s.weather_delay,
+  s.air_time,
+  s.distance,
+  s.loaded_ts
+FROM
+  kdz_12_staging.flights s
+LEFT JOIN
+  dds.airport ao ON s.origin = ao.iata_code
+LEFT JOIN
+  dds.airport ad ON s.dest = ad.iata_code
+LEFT JOIN
+  kdz_12_dds.flights d ON s.flight_date = d.flight_scheduled_date
+  AND s.flight_number = d.flight_number_reporting_airline
+  AND s.origin = d.origin_code
+  AND s.dest = d.dest_code
+WHERE
+  d.flight_dep_scheduled_ts IS NULL;
+
+
+INSERT INTO kdz_12_dds.airport_weather (
+    airport_dk, weather_type_dk, cold, rain, snow, thunderstorm, drizzle, fog_mist, 
+    t, max_gws, w_speed, date_start, date_end
+)
+SELECT
+    a.airport_dk,
+    CONCAT(
+        CASE WHEN w.t_air_temperature < 0 THEN '1' ELSE '0' END,
+        CASE WHEN w.ww_present LIKE '%rain%' OR w.ww_recent LIKE '%rain%' THEN '1' ELSE '0' END,
+        CASE WHEN w.ww_present LIKE '%snow%' OR w.ww_recent LIKE '%snow%' THEN '1' ELSE '0' END,
+        CASE WHEN w.ww_present LIKE '%thunderstorm%' OR w.ww_recent LIKE '%thunderstorm%' THEN '1' ELSE '0' END,
+        CASE WHEN w.ww_present LIKE '%drizzle%' OR w.ww_recent LIKE '%drizzle%' THEN '1' ELSE '0' END,
+        CASE WHEN w.ww_present LIKE '%fog%' OR w.ww_present LIKE '%mist%' OR w.ww_recent LIKE '%fog%' OR w.ww_recent LIKE '%mist%' THEN '1' ELSE '0' END
+    ) AS weather_type_dk,
+    CASE WHEN w.t_air_temperature < 0 THEN 1 ELSE 0 END AS cold,
+    CASE WHEN w.ww_present LIKE '%rain%' OR w.ww_recent LIKE '%rain%' THEN 1 ELSE 0 END AS rain,
+    CASE WHEN w.ww_present LIKE '%snow%' OR w.ww_recent LIKE '%snow%' THEN 1 ELSE 0 END AS snow,
+    CASE WHEN w.ww_present LIKE '%thunderstorm%' OR w.ww_recent LIKE '%thunderstorm%' THEN 1 ELSE 0 END AS thunderstorm,
+    CASE WHEN w.ww_present LIKE '%drizzle%' OR w.ww_recent LIKE '%drizzle%' THEN 1 ELSE 0 END AS drizzle,
+    CASE WHEN w.ww_present LIKE '%fog%' OR w.ww_present LIKE '%mist%' OR w.ww_recent LIKE '%fog%' OR w.ww_recent LIKE '%mist%' THEN 1 ELSE 0 END AS fog_mist,
+    w.t_air_temperature::int AS t,
+    w.ff10_max_gust_value AS max_gws,
+    w.ff_wind_speed AS w_speed,
+    w.local_datetime::timestamp AS date_start,
+    COALESCE(
+        LEAD(to_date(w.local_datetime, 'DD.MM.YYYY')
+) OVER (PARTITION BY UPPER(w.icao_code) ORDER BY to_date(w.local_datetime, 'DD.MM.YYYY')),
+        '3000-01-01'::timestamp
+    ) AS date_end
+FROM
+    kdz_12_staging.weather w
+JOIN
+    dwh.id_airport d ON UPPER(w.icao_code) = UPPER(d.src_icao_id)
+JOIN
+    dds.airport a ON d.dwh_dk = a.airport_dk
+WHERE
+    NOT EXISTS (
+        SELECT 1
+        FROM kdz_12_dds.airport_weather aw
+        WHERE aw.airport_dk = a.airport_dk AND aw.date_start = w.local_datetime::timestamp
+    );
