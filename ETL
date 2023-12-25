@@ -147,7 +147,7 @@ where exists(select 1 from kdz_12_etl.flights_min_max);
 
 
 create table if not exists kdz_12_etl.load_weather(
-loaded_ts timestamp not null primary key -- маркер последнего обработанного значения
+loaded_ts timestamp not null primary key
 );
 
 
