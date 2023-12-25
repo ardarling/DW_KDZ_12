@@ -1,0 +1,95 @@
+CREATE TABLE kdz_12_etl.flights (
+	year_flights int4 NULL,
+	quarter_flights int4 NULL,
+	month_flights int4 NULL,
+	flight_date date NULL,
+	dep_time time NULL,
+	crs_dep_time time NULL,
+	air_time float8 NULL,
+	dep_delay_minutes float8 NULL,
+	cancelled float4 NULL,
+	cancellation_code bpchar(1) NULL,
+	weather_delay float8 NULL,
+	reporting_airline varchar(10) NULL,
+	tail_number varchar(10) NULL,
+	flight_number varchar(15) NULL,
+	distance float8 NULL,
+	origin varchar(10) NULL,
+	dest varchar(10) NULL,
+	loaded_ts timestamp NULL
+);
+
+CREATE TABLE kdz_12_etl.flights_01 (
+	year_flights int4 NULL,
+	quarter_flights int4 NULL,
+	month_flights int4 NULL,
+	flight_date date NULL,
+	dep_time time NULL,
+	crs_dep_time time NULL,
+	air_time float8 NULL,
+	dep_delay_minutes float8 NULL,
+	cancelled float4 NULL,
+	cancellation_code bpchar(1) NULL,
+	weather_delay float8 NULL,
+	reporting_airline varchar(10) NULL,
+	tail_number varchar(10) NULL,
+	flight_number varchar(15) NULL,
+	distance float8 NULL,
+	origin varchar(10) NULL,
+	dest varchar(10) NULL
+);
+
+CREATE TABLE kdz_12_etl.flights_min_max (
+	ts1 timestamp NULL,
+	ts2 timestamp NULL
+);
+
+CREATE TABLE kdz_12_etl.load_flights (
+	loaded_ts timestamp NOT NULL,
+	CONSTRAINT load_flights_pkey PRIMARY KEY (loaded_ts)
+);
+
+CREATE TABLE kdz_12_etl.weather (
+	icao_code varchar(10) NULL,
+	local_datetime varchar(25) NULL,
+	t_air_temperature numeric(3, 1) NULL,
+	p0_sea_lvl numeric(4, 1) NULL,
+	p_station_lvl numeric(4, 1) NULL,
+	u_humidity int4 NULL,
+	dd_wind_direction varchar(100) NULL,
+	ff_wind_speed int4 NULL,
+	ff10_max_gust_value int4 NULL,
+	ww_present varchar(100) NULL,
+	ww_recent varchar(50) NULL,
+	c_total_clouds varchar(200) NULL,
+	vv_horizontal_visibility numeric(3, 1) NULL,
+	td_temperature_dewpoint numeric(3, 1) NULL,
+	loaded_ts timestamp NULL
+);
+
+CREATE TABLE kdz_12_etl.weather_01 (
+	icao_code varchar(10) NULL,
+	local_datetime varchar(25) NULL,
+	t_air_temperature numeric(3, 1) NULL,
+	p0_sea_lvl numeric(4, 1) NULL,
+	p_station_lvl numeric(4, 1) NULL,
+	u_humidity int4 NULL,
+	dd_wind_direction varchar(100) NULL,
+	ff_wind_speed int4 NULL,
+	ff10_max_gust_value int4 NULL,
+	ww_present varchar(100) NULL,
+	ww_recent varchar(50) NULL,
+	c_total_clouds varchar(200) NULL,
+	vv_horizontal_visibility numeric(3, 1) NULL,
+	td_temperature_dewpoint numeric(3, 1) NULL
+);
+
+CREATE TABLE kdz_12_etl.weather_min_max (
+	ts1 timestamp NULL,
+	ts2 timestamp NULL
+);
+
+CREATE TABLE kdz_12_etl.load_weather (
+	loaded_ts timestamp NOT NULL,
+	CONSTRAINT load_weather_pkey PRIMARY KEY (loaded_ts)
+);
